@@ -1,5 +1,5 @@
 # Varian mugen-shell dengan patch tampilan milik kamu (teks putih, tanpa fade, font JetBrains Mono).
-# Isi skrip patch sama persis dengan yang dulu ada di flake.nix.
+# Langkah 1-3 sama persis dengan yang dulu ada di flake.nix; langkah 4 = patch lock screen.
 { runCommand, mugen-shell }:
 
 runCommand "mugen-shell-bright" { } ''
@@ -17,6 +17,10 @@ runCommand "mugen-shell-bright" { } ''
   # 3) font global -> JetBrains Mono
   find $out -name '*.qml' -exec sed -i 's/M PLUS 1 Code/JetBrains Mono/g; s/M PLUS 2/JetBrains Mono/g' {} +
 
+  # 4) lock screen: tombol power (shutdown/sleep/restart/logout) wajib password dulu.
+  #    Gagal dengan jelas (fuzz=0) kalau file upstream berubah, bukan diam-diam rusak.
+  patch -p1 --fuzz=0 -d $out -i ${../patches/lock-power-auth.patch}
+
   # assertion (pakai if/then biar aman dari set -e)
   if ! grep -q 'darkTextPrimary: "#ffffff"' $out/lib/Colors.qml; then
     echo "PATCH GAGAL: Colors.qml"
@@ -24,6 +28,10 @@ runCommand "mugen-shell-bright" { } ''
   fi
   if find $out -name '*.qml' -exec grep -l '? 1.0 : 0.6\|? 1.0 : 0.75' {} + | grep -q .; then
     echo "PATCH GAGAL: masih ada fade"
+    exit 1
+  fi
+  if ! grep -q 'pendingPowerAction' $out/lock-shell.qml; then
+    echo "PATCH GAGAL: lock screen power-auth"
     exit 1
   fi
 ''

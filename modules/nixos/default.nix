@@ -11,5 +11,6 @@
     ./mugen-shell.nix
     ./users.nix
     ./packages.nix
+    ./ssh.nix
   ];
 }

@@ -12,5 +12,8 @@
     wget
     git # wajib ada di sistem: flake butuh git untuk membaca repo config
     pciutils
+    smile
+    wtype
+    gnupg
   ];
 }

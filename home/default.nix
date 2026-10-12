@@ -8,6 +8,7 @@
     ./shell.nix
     ./kitty.nix
     ./mugen-shell.nix
+    ./emoji-picker.nix
   ];
 
   home = {
