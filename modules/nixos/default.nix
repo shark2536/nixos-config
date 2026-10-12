@@ -12,5 +12,6 @@
     ./users.nix
     ./packages.nix
     ./ssh.nix
+    ./gpg.nix
   ];
 }

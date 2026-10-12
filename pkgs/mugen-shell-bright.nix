@@ -1,6 +1,10 @@
 # Varian mugen-shell dengan patch tampilan milik kamu (teks putih, tanpa fade, font JetBrains Mono).
-# Langkah 1-3 sama persis dengan yang dulu ada di flake.nix; langkah 4 = patch lock screen.
-{ runCommand, mugen-shell }:
+# Langkah 1-3 sama persis dengan yang dulu ada di flake.nix; langkah 4 = patch lock screen, langkah 5 = emoji picker.
+{
+  runCommand,
+  mugen-shell,
+  emoji-data,
+}:
 
 runCommand "mugen-shell-bright" { } ''
   cp -r ${mugen-shell}/shell $out
@@ -21,6 +25,13 @@ runCommand "mugen-shell-bright" { } ''
   #    Gagal dengan jelas (fuzz=0) kalau file upstream berubah, bukan diam-diam rusak.
   patch -p1 --fuzz=0 -d $out -i ${../patches/lock-power-auth.patch}
 
+  # 5) emoji picker: jendela baru yang keluar dari bar dan muncul di atas cursor.
+  #    Patch kecil menyambungkannya ke Bar/ModeManager/shell.qml; file & data emoji ditambahkan utuh.
+  patch -p1 --fuzz=0 -d $out -i ${../patches/emoji-picker-hooks.patch}
+  cp ${../qml/EmojiPicker.qml} $out/windows/EmojiPicker.qml
+  mkdir -p $out/data
+  cp ${emoji-data} $out/data/emoji.json
+
   # assertion (pakai if/then biar aman dari set -e)
   if ! grep -q 'darkTextPrimary: "#ffffff"' $out/lib/Colors.qml; then
     echo "PATCH GAGAL: Colors.qml"
@@ -32,6 +43,10 @@ runCommand "mugen-shell-bright" { } ''
   fi
   if ! grep -q 'pendingPowerAction' $out/lock-shell.qml; then
     echo "PATCH GAGAL: lock screen power-auth"
+    exit 1
+  fi
+  if ! grep -q 'emojiToggleRequested' $out/lib/ModeManager.qml; then
+    echo "PATCH GAGAL: emoji picker"
     exit 1
   fi
 ''

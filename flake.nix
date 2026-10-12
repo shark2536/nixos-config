@@ -24,9 +24,13 @@
       username = "shrky";
       pkgs = nixpkgs.legacyPackages.${system};
 
-      # Mugen-shell dengan patch tampilan kamu (lihat pkgs/mugen-shell-bright.nix).
+      # Daftar emoji untuk emoji picker (lihat pkgs/emoji-data.nix).
+      emoji-data = pkgs.callPackage ./pkgs/emoji-data.nix { };
+
+      # Mugen-shell dengan patch tampilan kamu + lock screen + emoji picker (lihat pkgs/mugen-shell-bright.nix).
       mugen-shell-bright = pkgs.callPackage ./pkgs/mugen-shell-bright.nix {
         mugen-shell = inputs.mugen-shell;
+        inherit emoji-data;
       };
     in
     {
