@@ -447,9 +447,6 @@ PanelWindow {
                 border.width: win.searching ? 1 : 0
                 border.color: win.glow
 
-                TapHandler {
-                    onTapped: win.beginSearch()
-                }
 
                 TextInput {
                     id: searchInput
@@ -465,6 +462,15 @@ PanelWindow {
                     Keys.onEscapePressed: win.endSearch(true)
                     Keys.onReturnPressed: win.endSearch(false)
                     Keys.onEnterPressed: win.endSearch(false)
+                }
+
+                // Di atas TextInput: tekan di mana pun pada kolom langsung memulai pencarian.
+                MouseArea {
+                    anchors.left: parent.left
+                    anchors.right: closeButton.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    onPressed: win.beginSearch()
                 }
 
                 Text {

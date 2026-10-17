@@ -21,5 +21,6 @@
     # aplikasi
     spotify
     kdePackages.kate
+    godot
   ];
 }

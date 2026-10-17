@@ -27,6 +27,8 @@ in
       nfmt = "nix fmt ${cfg}"; # rapikan semua file .nix
       ncfg = "cd ${cfg}"; # pindah ke folder config
       ns = "nix search nixpkgs"; # cari paket
+      vno = "vim ~/nixos-config/"; # edit nixos-config
+      cdno = "cd ~/nixos-config/"; # change directory into nixos-config
 
       # --- navigasi & file ---
       ".." = "cd ..";

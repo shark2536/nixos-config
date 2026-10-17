@@ -13,5 +13,6 @@
     git # wajib ada di sistem: flake butuh git untuk membaca repo config
     pciutils
     wtype # dipakai emoji picker untuk mengetik emoji langsung ke aplikasi
+    fcitx5
   ];
 }
