@@ -14,5 +14,6 @@
     pciutils
     wtype # dipakai emoji picker untuk mengetik emoji langsung ke aplikasi
     fcitx5
+    hunspellDicts.id_ID
   ];
 }
