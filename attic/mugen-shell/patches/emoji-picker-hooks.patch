@@ -1,0 +1,53 @@
+--- a/lib/ModeManager.qml
++++ b/lib/ModeManager.qml
+@@ -75,6 +75,9 @@
+     // Bar.qml restarts the central autoCloseTimer when this fires.
+     signal interaction()
+ 
++    // The emoji picker is its own window at the pointer, not a bar mode, so it has its own signal.
++    signal emojiToggleRequested()
++
+     function bump() {
+         interaction()
+     }
+@@ -150,6 +153,9 @@
+             case "close":
+                 closeAllModes()
+                 break
++            case "emoji":
++                emojiToggleRequested()
++                break
+             default:
+                 safeSwitch(cmd)
+                 break
+--- a/shell.qml
++++ b/shell.qml
+@@ -13,6 +13,13 @@
+         // screen is resolved in Bar.qml: it needs SettingsManager, which lives inside the bar window.
+     }
+ 
++    // Created at runtime so a broken picker can never take the bar down with it.
++    Component.onCompleted: {
++        const picker = Qt.createComponent("./windows/EmojiPicker.qml")
++        if (picker.status === Component.Ready) picker.createObject(root, { bar: barWindow })
++        else console.warn("emoji picker: " + picker.errorString())
++    }
++
+     Connections {
+         target: Quickshell
+ 
+--- a/windows/Bar.qml
++++ b/windows/Bar.qml
+@@ -135,6 +135,12 @@
+ 
+     property alias notificationManager: notificationManager
+ 
++    // Handles for windows/EmojiPicker.qml: it grows out of the bar's shape and reuses its look.
++    property alias barSurface: surface
++    property alias barTheme: theme
++    property alias barModeManager: modeManager
++    property alias barSettings: settingsManager
++
+     // AI only counts down while quiet: no streamed reply, no unsent draft.
+     readonly property bool aiQuiet: !yuraFloatThinking
+         && (!aiAssistantLoader.item

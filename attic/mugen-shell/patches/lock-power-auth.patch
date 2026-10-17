@@ -1,0 +1,145 @@
+--- a/lock-shell.qml
++++ b/lock-shell.qml
+@@ -36,6 +36,13 @@
+     // A module that waits before the prompt (fprintd, u2f) would disarm the field on every refresh.
+     property bool pamNoticeRefreshable: false
+ 
++    // Holding a power tile only arms its action; the lock's own password check releases it.
++    property int pendingPowerAction: -1
++    readonly property var powerLabels: ["SHUT DOWN", "SLEEP", "RESTART", "LOG OUT"]
++    readonly property string pendingPowerLabel:
++        pendingPowerAction >= 0 && pendingPowerAction < powerLabels.length
++            ? powerLabels[pendingPowerAction] : ""
++
+     // xray shows the desktop until the face is opaque, and sleep does not wait for the fade.
+     readonly property bool instantEntry: Quickshell.env("MUGEN_LOCK_INSTANT") === "1"
+ 
+@@ -162,6 +169,20 @@
+         Quickshell.execDetached(powerCommands[action])
+     }
+ 
++    function requestPowerAction(action) {
++        if (action < 0 || action >= powerCommands.length) return
++        if (unlocking || authenticating) return
++        // A half-typed password belongs to the unlock, not to this action.
++        password = ""
++        pendingPowerAction = action
++        pendingPowerTimer.restart()
++    }
++
++    function cancelPowerAction() {
++        pendingPowerAction = -1
++        pendingPowerTimer.stop()
++    }
++
+     function refreshClock() {
+         const now = new Date()
+         timeText = Theme.Format.clockTime(now, settingsManager.clockShow24Hour,
+@@ -179,6 +200,7 @@
+     function typeCharacter(text) {
+         if (unlocking || authenticating || !armed) return
+         password += text
++        if (pendingPowerAction >= 0) pendingPowerTimer.restart()
+         keystroke()
+     }
+ 
+@@ -481,6 +503,15 @@
+             root.password = ""
+ 
+             if (result === PamResult.Success) {
++                if (root.pendingPowerAction >= 0) {
++                    // Authorised, not unlocked: the session stays locked behind the action.
++                    const action = root.pendingPowerAction
++                    root.cancelPowerAction()
++                    root.armed = false
++                    root.runPowerAction(action)
++                    root.startPam()
++                    return
++                }
+                 root.beginUnlock()
+                 return
+             }
+@@ -510,6 +541,20 @@
+         }
+     }
+ 
++    // An abandoned hold must not leave the next person one password away from a shutdown.
++    Timer {
++        id: pendingPowerTimer
++        interval: 15000
++        onTriggered: {
++            if (root.authenticating) {
++                pendingPowerTimer.restart()
++                return
++            }
++            root.cancelPowerAction()
++            root.clearPassword()
++        }
++    }
++
+     Timer {
+         id: pamRetryTimer
+         interval: 2000
+@@ -630,6 +675,7 @@
+                 faultText: root.pamFaulted
+                     ? "Authentication is unavailable — retrying" : ""
+                 noticeText: root.pamNotice
++                pendingPowerLabel: root.pendingPowerLabel
+                 authenticating: root.authenticating
+                 unlocking: root.unlocking
+                 unlockGrace: root.unlockGrace
+@@ -669,7 +715,7 @@
+                 onPreviousRequested: musicPlayerManager.previous()
+                 onPlayPauseRequested: musicPlayerManager.playPause()
+                 onNextRequested: musicPlayerManager.next()
+-                onPowerActionRequested: action => root.runPowerAction(action)
++                onPowerActionRequested: action => root.requestPowerAction(action)
+ 
+                 Component.onCompleted: {
+                     if (root.entryStarted) lockSurface.skipEntry()
+@@ -701,6 +747,7 @@
+                         else root.eraseCharacter()
+                         return
+                     case Qt.Key_Escape:
++                        if (!root.authenticating) root.cancelPowerAction()
+                         root.clearPassword()
+                         return
+                     }
+--- a/components/lock/LockSurface.qml
++++ b/components/lock/LockSurface.qml
+@@ -80,6 +80,8 @@
+     property bool awaitingPassword: false
+     property string faultText: ""
+     property string noticeText: ""
++    // Set while a held power tile waits for the password.
++    property string pendingPowerLabel: ""
+     property bool authenticating: false
+     property bool unlocking: false
+     property int unlockGrace: 0
+@@ -219,6 +221,9 @@
+         && !failMurk.running
+     readonly property bool noticeShown:
+         noticeText !== "" && faultText === "" && passwordLength === 0 && !unlocking
++    // Stays up while typing, so a held tile is never mistaken for a plain unlock.
++    readonly property bool pendingShown:
++        pendingPowerLabel !== "" && !unlocking && faultText === "" && noticeText === ""
+ 
+     // Outside the glow, which grows with charge and wobble to about 1.07x.
+     readonly property real moteInner:
+@@ -581,9 +586,14 @@
+                         anchors.horizontalCenter: parent.horizontalCenter
+                         anchors.bottom: parent.bottom
+                         anchors.bottomMargin: root.cellH * 0.17
+-                        text: "PASSWORD"
++                        width: parent.width * 0.9
++                        horizontalAlignment: Text.AlignHCenter
++                        fontSizeMode: Text.HorizontalFit
++                        minimumPixelSize: Math.round(root.cellH * 0.05)
++                        text: root.pendingShown ? "CONFIRM " + root.pendingPowerLabel : "PASSWORD"
+                         color: root.clockColor
+-                        opacity: root.passwordHintShown ? lockIcon.glyphOpacity : 0
++                        opacity: root.pendingShown ? 0.85
++                            : (root.passwordHintShown ? lockIcon.glyphOpacity : 0)
+                         font.family: root.faceFontFamily
+                         font.pixelSize: Math.round(root.cellH * 0.09)
+                         font.letterSpacing: root.cellH * 0.09 * 0.18
